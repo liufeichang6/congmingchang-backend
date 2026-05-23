@@ -592,6 +592,8 @@ app.delete('/api/mnemonics/:id', authenticateToken, async (req, res) => {
 });
 
 // ========== 导出服务器 ==========
+// ========== 启动服务器 ==========
+const PORT = process.env.PORT || 8080; // 使用环境变量 PORT，默认 8080（对应你的日志）
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 聪明肠后端服务器运行在 http://localhost:${PORT}`);
+  console.log(`🚀 聪明肠后端服务器运行在 http://0.0.0.0:${PORT}`);
 });
