@@ -1,6 +1,6 @@
 {
   "name": "congmingchang-backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "聪明肠后端服务",
   "main": "api/index.js",
   "scripts": {
