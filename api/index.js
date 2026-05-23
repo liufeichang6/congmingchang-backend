@@ -592,4 +592,7 @@ app.delete('/api/mnemonics/:id', authenticateToken, async (req, res) => {
 });
 
 // ========== 导出服务器 ==========
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 聪明肠后端服务器运行在 http://localhost:${PORT}`);
+});
 module.exports = app;
