@@ -6,7 +6,6 @@ const bcrypt = require('bcryptjs');
 const bodyParser = require('body-parser');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'congmingchang_secret_key_2026';
 
 // ========== 中间件 ==========
