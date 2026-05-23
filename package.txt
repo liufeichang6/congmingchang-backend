@@ -1,0 +1,17 @@
+{
+  "name": "congmingchang-backend",
+  "version": "1.0.0",
+  "description": "聪明肠后端服务",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node api/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "pg": "^8.11.0",
+    "jsonwebtoken": "^9.0.0",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.2"
+  }
+}
