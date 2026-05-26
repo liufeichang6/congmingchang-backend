@@ -32,6 +32,7 @@ async function initDatabase() {
                 nickname TEXT,
                 phone TEXT,
                 role TEXT DEFAULT 'normal',
+                status TEXT DEFAULT 'offline',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_login TIMESTAMP
             )
@@ -242,7 +243,7 @@ app.post('/api/login', async (req, res) => {
         
         // 更新最后登录时间
         await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
-        
+        await pool.query('UPDATE users SET status = $1, last_login = CURRENT_TIMESTAMP WHERE id = $2', ['online', user.id]);
         const token = generateToken(user.id, user.username, user.role);
         res.json({
             token,
@@ -293,7 +294,7 @@ app.post('/api/admin/generate-users', authenticateToken, adminOnly, async (req, 
 app.get('/api/admin/users', authenticateToken, adminOnly, async (req, res) => {
     try {
         const result = await pool.query(
-            'SELECT id, username, nickname, phone, role, created_at, last_login FROM users ORDER BY created_at DESC'
+            'SELECT id, username, nickname, phone, role, status, created_at, last_login FROM users ORDER BY created_at DESC'
         );
         res.json(result.rows);
     } catch (err) {
@@ -322,10 +323,41 @@ app.post('/api/admin/reset-password', authenticateToken, adminOnly, async (req, 
 app.delete('/api/admin/users/:id', authenticateToken, adminOnly, async (req, res) => {
     const { id } = req.params;
     try {
+        // 按照外键依赖顺序，先删除关联表的数据
+        await pool.query('DELETE FROM feedback WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM mnemonics WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM weak_topics WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM notes WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM mistakes WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM questions WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM collections WHERE user_id = $1', [id]);
+        // 最后删除用户
         await pool.query('DELETE FROM users WHERE id = $1', [id]);
         res.json({ message: '用户已删除' });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: '删除用户失败' });
+    }
+});
+// ---- 管理员：封禁用户 ----
+app.put('/api/admin/users/:id/ban', authenticateToken, adminOnly, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('UPDATE users SET status = $1 WHERE id = $2', ['banned', id]);
+        res.json({ message: '用户已封禁' });
+    } catch (err) {
+        res.status(500).json({ error: '封禁失败' });
+    }
+});
+
+// ---- 管理员：解封用户 ----
+app.put('/api/admin/users/:id/unban', authenticateToken, adminOnly, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('UPDATE users SET status = $1 WHERE id = $2', ['offline', id]);
+        res.json({ message: '用户已解封' });
+    } catch (err) {
+        res.status(500).json({ error: '解封失败' });
     }
 });
 // ---- 管理员：获取所有意见 ----
