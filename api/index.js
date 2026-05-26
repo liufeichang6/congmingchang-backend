@@ -244,6 +244,8 @@ app.post('/api/login', async (req, res) => {
         // 更新最后登录时间
         await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
         await pool.query('UPDATE users SET status = $1, last_login = CURRENT_TIMESTAMP WHERE id = $2', ['online', user.id]);
+        // 更新最后登录时间和在线状态
+await pool.query('UPDATE users SET status = $1, last_login = CURRENT_TIMESTAMP WHERE id = $2', ['online', user.id]);
         const token = generateToken(user.id, user.username, user.role);
         res.json({
             token,
