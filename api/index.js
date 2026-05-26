@@ -160,11 +160,8 @@ async function authenticateToken(req, res, next) {
     
     try {
         const user = jwt.verify(token, JWT_SECRET);
-        // 识别 liufeichang 为管理员
-        const ADMIN_USERS = ['liufeichang'];
-        if (ADMIN_USERS.includes(user.username)) {
-            user.role = 'admin';
-        }
+// 直接信任数据库里的 role 字段，不做硬编码覆盖
+// 不再强制把 liufeichang 设为 admin，而是看数据库
         req.user = user;
         next();
     } catch (err) {
