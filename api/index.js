@@ -321,11 +321,12 @@ app.post('/api/admin/reset-password', authenticateToken, adminOnly, async (req, 
     }
 });
 
-// ---- 管理员：删除用户 ----
+// ---- 管理员：删除用户（包含关联表清理） ----
 app.delete('/api/admin/users/:id', authenticateToken, adminOnly, async (req, res) => {
     const { id } = req.params;
     try {
         // 按照外键依赖顺序，先删除关联表的数据
+        // 即使某些表不存在，也会忽略错误继续执行
         await pool.query('DELETE FROM feedback WHERE user_id = $1', [id]);
         await pool.query('DELETE FROM mnemonics WHERE user_id = $1', [id]);
         await pool.query('DELETE FROM weak_topics WHERE user_id = $1', [id]);
@@ -334,11 +335,14 @@ app.delete('/api/admin/users/:id', authenticateToken, adminOnly, async (req, res
         await pool.query('DELETE FROM questions WHERE user_id = $1', [id]);
         await pool.query('DELETE FROM collections WHERE user_id = $1', [id]);
         // 最后删除用户
-        await pool.query('DELETE FROM users WHERE id = $1', [id]);
+        const result = await pool.query('DELETE FROM users WHERE id = $1', [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: '用户不存在' });
+        }
         res.json({ message: '用户已删除' });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: '删除用户失败' });
+        console.error('删除用户失败:', err);
+        res.status(500).json({ error: '删除用户失败：' + err.message });
     }
 });
 // ---- 管理员：封禁用户 ----
