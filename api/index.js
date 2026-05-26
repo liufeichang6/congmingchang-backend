@@ -109,7 +109,19 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
+        // 意见反馈表
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS feedback (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                username TEXT NOT NULL,
+                nickname TEXT,
+                content TEXT NOT NULL,
+                read BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('✅ 意见反馈表初始化完成');
         console.log('✅ 数据库表初始化完成');
 
         // 创建默认管理员账号（如果不存在）
@@ -316,7 +328,42 @@ app.delete('/api/admin/users/:id', authenticateToken, adminOnly, async (req, res
         res.status(500).json({ error: '删除用户失败' });
     }
 });
+// ---- 管理员：获取所有意见 ----
+app.get('/api/admin/feedback', authenticateToken, adminOnly, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT id, user_id, username, nickname, content, read, created_at FROM feedback ORDER BY created_at DESC'
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: '获取意见列表失败' });
+    }
+});
 
+// ---- 管理员：标记意见为已读 ----
+app.put('/api/admin/feedback/:id/read', authenticateToken, adminOnly, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('UPDATE feedback SET read = TRUE WHERE id = $1', [id]);
+        res.json({ message: '已标记为已读' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: '标记失败' });
+    }
+});
+
+// ---- 管理员：删除意见 ----
+app.delete('/api/admin/feedback/:id', authenticateToken, adminOnly, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM feedback WHERE id = $1', [id]);
+        res.json({ message: '删除成功' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: '删除失败' });
+    }
+});
 // ---- 题集管理 ----
 app.post('/api/collections', authenticateToken, async (req, res) => {
     const { name, source_file } = req.body;
@@ -589,7 +636,28 @@ app.delete('/api/mnemonics/:id', authenticateToken, async (req, res) => {
         res.status(500).json({ error: '删除口诀失败' });
     }
 });
-
+// ---- 用户提交意见 ----
+app.post('/api/feedback', authenticateToken, async (req, res) => {
+    const { content } = req.body;
+    const userId = req.user.id;
+    const username = req.user.username;
+    const nickname = req.user.nickname || username;
+    
+    if (!content || content.trim() === '') {
+        return res.status(400).json({ error: '意见内容不能为空' });
+    }
+    
+    try {
+        const result = await pool.query(
+            'INSERT INTO feedback (user_id, username, nickname, content) VALUES ($1, $2, $3, $4) RETURNING id',
+            [userId, username, nickname, content]
+        );
+        res.json({ id: result.rows[0].id });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: '提交意见失败' });
+    }
+});
 // ========== 导出服务器 ==========
 // ========== 启动服务器 ==========
 const PORT = process.env.PORT || 8080; // 使用环境变量 PORT，默认 8080（对应你的日志）
