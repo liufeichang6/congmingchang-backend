@@ -264,7 +264,7 @@ app.get('/api/verify-token', authenticateToken, (req, res) => {
 
 // ---- 管理员：生成账号 ----
 app.post('/api/admin/generate-users', authenticateToken, adminOnly, async (req, res) => {
-    const { count = 1, prefix = 'user' } = req.body;
+    const { count = 1, prefix = 'user', usernames, passwords } = req.body;
     const num = parseInt(count);
     
     if (num < 1 || num > 50) {
@@ -273,19 +273,40 @@ app.post('/api/admin/generate-users', authenticateToken, adminOnly, async (req, 
     
     const results = [];
     
-    for (let i = 0; i < num; i++) {
-        const username = `${prefix}${Date.now().toString().slice(-4)}${Math.floor(Math.random() * 1000)}`;
-        const password = Math.random().toString(36).slice(-8);
-        const hashedPassword = bcrypt.hashSync(password, 10);
-        
-        try {
-            const result = await pool.query(
-                'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id',
-                [username, hashedPassword, 'normal']
-            );
-            results.push({ username, password, id: result.rows[0].id });
-        } catch (err) {
-            i--;
+    // 如果指定了用户名和密码列表，直接使用它们
+    if (usernames && passwords && usernames.length === passwords.length) {
+        for (let i = 0; i < usernames.length; i++) {
+            const username = usernames[i];
+            const password = passwords[i];
+            const hashedPassword = bcrypt.hashSync(password, 10);
+            
+            try {
+                const result = await pool.query(
+                    'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id',
+                    [username, hashedPassword, 'normal']
+                );
+                results.push({ username, password, id: result.rows[0].id });
+            } catch (err) {
+                // 跳过重复的用户名
+                continue;
+            }
+        }
+    } else {
+        // 否则按原逻辑随机生成
+        for (let i = 0; i < num; i++) {
+            const username = `${prefix}${Date.now().toString().slice(-4)}${Math.floor(Math.random() * 1000)}`;
+            const password = Math.random().toString(36).slice(-8);
+            const hashedPassword = bcrypt.hashSync(password, 10);
+            
+            try {
+                const result = await pool.query(
+                    'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id',
+                    [username, hashedPassword, 'normal']
+                );
+                results.push({ username, password, id: result.rows[0].id });
+            } catch (err) {
+                i--;
+            }
         }
     }
     
