@@ -223,6 +223,10 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     
+        // 👇 添加这几行日志
+    console.log('收到登录请求: username =', username);
+    console.log('请求体完整内容:', req.body);
+    
     if (!username || !password) {
         return res.status(400).json({ error: '用户名和密码不能为空' });
     }
